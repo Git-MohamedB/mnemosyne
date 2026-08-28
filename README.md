@@ -1,6 +1,6 @@
-# Mnémosyne - Suivi des Cohortes IUT
+# Mnémosyne - Suivi des Cohortes
 
-Application web de visualisation des parcours étudiants de l'IUT de Villetaneuse via diagrammes Sankey.
+Application web de visualisation des parcours étudiants via diagrammes Sankey.
 
 ## Fonctionnalités
 
@@ -44,7 +44,7 @@ VALUES ('admin', '$2y$10$...');  -- Hash bcrypt du mot de passe
 ```
 
 5. **Synchroniser les données**
-   - Placer les fichiers JSON ScoDoc dans `uploads/SAE_json/`
+   - Placer les fichiers JSON ScoDoc dans `SAE_json/`
    - Connexion admin → Bouton "Synchroniser"
 
 ## Structure du Projet
@@ -57,10 +57,15 @@ L'application utilise une architecture MVC modulaire et sécurisée :
 │   ├── controllers/        # Contrôleurs métier (Admin, Auth)
 │   ├── core/               # Cœur (Database Singleton, CSRF, Routeur)
 │   ├── models/             # Accès BDD (AdminModel, FormationModel)
-│   └── views/              # Vues PHP (admin, auth)
+│   └── views/              # Vues PHP (admin, auth, consult)
 ├── css/                    # CSS Modulaire (components.css, styles.css)
+├── docs/                   # Documentation et rapports
+│   ├── DOCTECHNIQUE.md     # Documentation technique
+│   ├── MANUEL_ADMIN.md     # Manuel d'utilisation administrateur
+│   └── S4/                 # Rapports et livrables S4
 ├── import/                 # Scripts d'import et normalisation ScoDoc
-├── uploads/SAE_json/       # Fichiers bruts d'import
+├── SAE_json/               # Fichiers bruts d'import
+├── tests/                  # Scripts de tests
 ├── index.php               # Point d'entrée principal (Consultation)
 ├── admin.php               # Point d'entrée d'administration
 ├── login.php               # Point d'entrée authentification
@@ -73,11 +78,12 @@ L'application utilise une architecture MVC modulaire et sécurisée :
 
 - Modèle MVC isolant la logique de la présentation
 - Identifiants BDD protégés hors du dépôt (`env.php` ignoré via `.gitignore`)
-- Authentification stricte par session PHP (Regeneration d'ID)
+- Authentification stricte par session PHP (Régénération d'ID)
 - Protection CSRF (Jetons uniques) sur les formulaires
 - Mots de passe hashés (bcrypt)
 - Requêtes PDO préparées contre les injections SQL
+- Données étudiantes anonymisées
 
-## Auteurs
+## Cadre du Projet
 
-Projet SAE - BUT Informatique - Université Sorbonne Paris Nord
+Projet SAE - BUT Informatique
