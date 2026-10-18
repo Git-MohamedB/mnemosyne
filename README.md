@@ -1,89 +1,74 @@
-# Mnémosyne - Suivi des Cohortes
+<div align="right">
+  <a href="./README.md"><img src="https://img.shields.io/badge/Lang-🇬🇧_English-blue?style=for-the-badge" alt="English"></a>
+  <a href="./README.fr.md"><img src="https://img.shields.io/badge/Lang-🇫🇷_Français-lightgrey?style=for-the-badge" alt="Français"></a>
+</div>
 
-Application web de visualisation des parcours étudiants via diagrammes Sankey.
+# Mnémosyne
 
-## Fonctionnalités
+Full-stack academic cohort analytics platform built over one year for IUT de Villetaneuse to normalize anonymized ScoDoc exports, track multi-year student progression via interactive Sankey diagrams, and generate PDF/JSON administration reports.
 
-- **Diagramme Sankey** : Visualisation des flux étudiants BUT1 → BUT2 → BUT3 → Diplômé. Prise en compte du niveau de dette pour une granularité précise des passages.
-- **Filtres Avancés** : Par formation (les 6 BUT + Tout l'IUT), année de promotion, et statut de diplomation.
-- **Bilan de Compétences** : Analyse détaillée du ratio de compétences validées (ex: 5/6, 6/6) avec séparation des étudiants "Sans dette" et "Avec dette".
-- **Exports Multiples** : Génération de rapports PDF complets avec charte graphique, et export des données brutes au format JSON pour l'administration.
-- **Administration Sécurisée** : Importation et normalisation intelligente des fichiers ScoDoc (correction automatique des variantes de noms de formations et détection FI/FA).
+## Context & Problem
 
-## Installation
+University departments tracking 3-year Bachelor (BUT) cohorts face fragmented JSON jury exports across 6 different programs (`INFO`, `GEA`, `GEII`, `RT`, `CJ`, `SD`) with inconsistent naming conventions, repeating debt levels, and work-study (`FA`) vs classic (`FI`) track switches.
 
-### Prérequis
-- PHP 7.4+ avec extensions PDO, JSON, ZIP
-- MySQL/MariaDB 5.7+
-- Serveur web Apache/Nginx ou Docker
+Mnémosyne unifies ScoDoc ingestion into a normalized MySQL relational schema and replaces manual spreadsheet aggregation with interactive transition flows and skill validation metrics.
 
-### Étapes
+## Technical Architecture
 
-1. **Cloner le projet**
+```mermaid
+flowchart LR
+    JSON["Anonymized ScoDoc Exports (SAE_json/*.json)"] -->|"Normalize & hash IDs (import/*.php)"| DB[("MySQL Database")]
+    U["Staff / Admin Browser"] -->|"HTTP"| ROUTER["Front Controllers (index.php / admin.php / login.php)"]
+    ROUTER -->|"CSRF + Session Auth"| CTRL["MVC Controllers (app/controllers/*)"]
+    CTRL -->|"PDO Prepared Queries"| MOD["Models & Singleton PDO (app/models/*, app/core/Database.php)"]
+    MOD --> DB
+    U -->|"AJAX Fetch"| API["JSON Endpoints (app/api/recuperer_*.php)"]
+    API --> DB
+    API -->|"Flow & Competency Data"| JS["Sankey Visualizer & PDF/JSON Export (script.js)"]
+```
+
+## Engineering Choices, Security & Performance
+
+- **Zero-framework PHP MVC (`app/core/`, `app/controllers/`, `app/models/`)**: Keeps routing, database access (`Database` PDO singleton), and views cleanly separated with strict server-side control and zero runtime dependency bloat.
+- **Database & web security baseline**: All SQL queries use PDO prepared statements (`ATTR_ERRMODE => ERRMODE_EXCEPTION`), forms validate unique CSRF tokens, admin sessions regenerate session IDs and hash passwords with `bcrypt`, and DB credentials live exclusively in git-ignored `env.php`.
+- **Privacy by design**: Student records ingested from `SAE_json/` store SHA-256 pseudonymous hashes (`etudid`, `code_nip`) with personal identifiers stripped prior to import.
+- **Data normalization pipeline (`import/`)**: Handles program name variations across cohorts (`import_formations.php`, `import_decision_annuelle.php`, `import_resultat_competence.php`) to ensure consistent BUT1 -> BUT2 -> BUT3 -> Graduate Sankey edges.
+
+## Quick Start
+
+### Prerequisites
+
+- PHP 7.4+ (tested on PHP 8.2) with `pdo_mysql`, `json`, and `zip` extensions
+- MySQL 5.7+ or MariaDB
+- Apache/Nginx or PHP built-in server
+
+### Setup & Run Locally
+
 ```bash
-git clone <url_depot>
+git clone https://github.com/Git-MohamedB/mnemosyne.git
 cd mnemosyne
-```
 
-2. **Configurer la base de données**
-```bash
-# Créer le fichier env.php depuis l'exemple
+# Configure database credentials (ignored by git)
 cp env.example.php env.php
-# Éditer env.php avec vos identifiants BDD
 ```
 
-3. **Importer le schéma SQL**
-```sql
+Import the schema and seed data:
+
+```bash
 mysql -u <user> -p <database> < mnemosyne-projet_bdd.sql
 ```
 
-4. **Créer un administrateur**
-```sql
-INSERT INTO admin (identifiant, mot_de_passe) 
-VALUES ('admin', '$2y$10$...');  -- Hash bcrypt du mot de passe
+Run the cohort JSON normalization scripts and start a local PHP server:
+
+```bash
+php import/run_all_imports.php
+php -S localhost:8080
 ```
 
-5. **Synchroniser les données**
-   - Placer les fichiers JSON ScoDoc dans `SAE_json/`
-   - Connexion admin → Bouton "Synchroniser"
+Open `http://localhost:8080` in your browser (`tests/test_structure.php` verifies MVC file layout and PDO integrity when DB is running).
 
-## Structure du Projet
+## Future Improvements
 
-L'application utilise une architecture MVC modulaire et sécurisée :
-
-```
-├── app/
-│   ├── api/                # APIs JSON (Sankey, Bilan compétences)
-│   ├── controllers/        # Contrôleurs métier (Admin, Auth)
-│   ├── core/               # Cœur (Database Singleton, CSRF, Routeur)
-│   ├── models/             # Accès BDD (AdminModel, FormationModel)
-│   └── views/              # Vues PHP (admin, auth, consult)
-├── css/                    # CSS Modulaire (components.css, styles.css)
-├── docs/                   # Documentation et rapports
-│   ├── DOCTECHNIQUE.md     # Documentation technique
-│   ├── MANUEL_ADMIN.md     # Manuel d'utilisation administrateur
-│   └── S4/                 # Rapports et livrables S4
-├── import/                 # Scripts d'import et normalisation ScoDoc
-├── SAE_json/               # Fichiers bruts d'import
-├── tests/                  # Scripts de tests
-├── index.php               # Point d'entrée principal (Consultation)
-├── admin.php               # Point d'entrée d'administration
-├── login.php               # Point d'entrée authentification
-├── env.example.php         # Variables d'environnement (Git-ignored)
-├── script.js               # Logique JavaScript (Sankey, Exports)
-└── mnemosyne-projet_bdd.sql# Schéma Base de Données
-```
-
-## Sécurité
-
-- Modèle MVC isolant la logique de la présentation
-- Identifiants BDD protégés hors du dépôt (`env.php` ignoré via `.gitignore`)
-- Authentification stricte par session PHP (Régénération d'ID)
-- Protection CSRF (Jetons uniques) sur les formulaires
-- Mots de passe hashés (bcrypt)
-- Requêtes PDO préparées contre les injections SQL
-- Données étudiantes anonymisées
-
-## Cadre du Projet
-
-Projet SAE - BUT Informatique
+- Containerize the full PHP + MySQL + PhpMyAdmin stack via `docker-compose.yml` for zero-setup onboarding.
+- Introduce Composer PSR-4 autoloading and PHPUnit suites with a mocked PDO connection in CI alongside `php -l` syntax checks.
+- Add role-based read scopes per department head for multi-tenant administration.
